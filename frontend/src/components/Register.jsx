@@ -6,6 +6,7 @@ import axios from 'axios';
 const Register = () => {
   const [name, setName] = useState('');
   const [msg, setMsg] = useState('');
+  const [descriptors, setDescriptors] = useState([]);
 
   useEffect(() => {
     loadModels();
@@ -17,14 +18,17 @@ const Register = () => {
     img.onload = async () => {
       const descriptor = await getFullFaceDescription(img);
       if (!descriptor) return setMsg('No face detected');
-
-      await axios.post('http://localhost:8000/api/auth/register', {
-        name,
-        descriptors: [Array.from(descriptor)],
-      });
-
-      setMsg('Registered successfully!');
+      setDescriptors(prev => [...prev, Array.from(descriptor)]);
+      setMsg(`${descriptors.length + 1} face samples captured`);
     };
+  };
+
+  const handleRegister = async () => {
+    if (descriptors.length < 3) return setMsg('Please capture at least 3 images');
+    await axios.post('http://localhost:8000/api/auth/register', { name, descriptors });
+    setMsg('Registered successfully!');
+    setName('');
+    setDescriptors([]);
   };
 
   return (
@@ -32,6 +36,10 @@ const Register = () => {
       <h2>Register</h2>
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Enter Name" />
       <WebcamCapture onCapture={handleCapture} />
+      <p>{descriptors.length} face samples captured</p>
+      <button onClick={handleRegister} disabled={!name || descriptors.length < 3}>
+        Register
+      </button>
       <p>{msg}</p>
     </div>
   );
