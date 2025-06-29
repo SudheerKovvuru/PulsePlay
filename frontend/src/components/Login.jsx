@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { loadModels, getFullFaceDescription, createFaceMatcher } from '../utils/faceUtils';
 import axios from 'axios';
+import '../styles/Login.css';
 
 const Login = () => {
   const [mode, setMode] = useState('login');
@@ -15,7 +16,19 @@ const Login = () => {
     loadModels();
   }, []);
 
+  // Automatically trigger registration after 3 images
+  useEffect(() => {
+    if (mode === 'register' && descriptors.length === 3 && name) {
+      handleRegister();
+    }
+  // eslint-disable-next-line
+  }, [descriptors, name, mode]);
+
   const handleCapture = async () => {
+    if (mode === 'register' && !name) {
+      setMsg('Please enter your name and take 3 images');
+      return;
+    }
     const imageSrc = webcamRef.current.getScreenshot();
     const img = new Image();
     img.src = imageSrc;
@@ -31,7 +44,7 @@ const Login = () => {
         if (bestMatch.label !== 'unknown') {
           setMsg(`Welcome, ${bestMatch.label}`);
         } else {
-          setMsg('Face not recognized. Please Register.');
+          setMsg('Please enter your name and take 3 images');
           setMode('register');
         }
       } else {
@@ -43,42 +56,35 @@ const Login = () => {
   };
 
   const handleRegister = async () => {
-    if (descriptors.length < 3) return setMsg('Please capture at least 3 images');
+    if (descriptors.length < 3 || !name) {
+      setMsg('Please enter your name and take 3 images');
+      return;
+    }
     await axios.post('http://localhost:8000/api/auth/register', { name, descriptors });
     setMsg('Registered successfully!');
     setName('');
     setDescriptors([]);
     setMode('login');
   };
+
   return (
-    <div>
-      <h1>PulsePlay</h1>
-
+    <div className="login-container">
+      <h1 className='pulseplay-title'>PulsePlay</h1>
       <div>
-        <Webcam ref={webcamRef} screenshotFormat="image/jpeg"/>
+        <Webcam ref={webcamRef} screenshotFormat="image/jpeg" className='cam'/>
       </div>
-      <button
-        onClick={handleCapture}
-        >
-        Capture
-      </button>
-
-      {mode === 'register' && (
-        <div>
+      <div>
+        {mode === 'register' && (
           <input
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Enter your name"
           />
-          <button
-            onClick={handleRegister}
-            disabled={!name || descriptors.length < 3}
-            >
-            Register
-          </button>
-        </div>
-      )}
-
+        )}
+        <button onClick={handleCapture}>
+          Capture
+        </button>
+      </div>
       <p>{msg}</p>
     </div>
   );
